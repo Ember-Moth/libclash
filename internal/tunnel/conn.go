@@ -12,6 +12,15 @@ func CloseAllConnections() {
 	})
 }
 
+func QueryConnectionCount() int {
+	count := 0
+	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
+		count++
+		return true
+	})
+	return count
+}
+
 func closeMatch(filter func(conn C.Connection) bool) {
 	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
 		if filter(c) {

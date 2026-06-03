@@ -1,0 +1,62 @@
+name: Build iOS native library
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - "libclash.go"
+      - "go.mod"
+      - "go.sum"
+      - "scripts/build-carchive-ios.sh"
+      - ".github/workflows/build-ios.yml"
+  pull_request:
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - "libclash.go"
+      - "go.mod"
+      - "go.sum"
+      - "scripts/build-carchive-ios.sh"
+      - ".github/workflows/build-ios.yml"
+
+jobs:
+  build:
+    name: Build libclash for iOS
+    runs-on: macos-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Show toolchains
+        run: |
+          go version
+          xcodebuild -version
+
+      - name: Build iOS c-archive and XCFramework
+        run: ./scripts/build-carchive-ios.sh
+
+      - name: Package artifact
+        run: |
+          cd dist/cshared
+          tar -czf libclash-ios.tar.gz ios
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libclash-ios
+          path: dist/cshared/libclash-ios.tar.gz
+          if-no-files-found: error
+          retention-days: 14

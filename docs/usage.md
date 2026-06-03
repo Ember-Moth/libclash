@@ -40,6 +40,16 @@ NDK_HOME=/opt/android-sdk/ndk/27.1.12297006 ./scripts/build-android.sh
 dist/android/libclash.aar
 ```
 
+默认构建 ABI：
+
+```text
+armeabi-v7a
+arm64-v8a
+x86_64
+```
+
+默认不构建 `x86` / `android/386`。
+
 自定义 Java 包名前缀：
 
 ```bash
@@ -50,6 +60,20 @@ JAVA_PKG=com.example ./scripts/build-android.sh
 
 ```bash
 AAR_NAME=libclash-debug.aar ./scripts/build-android.sh
+```
+
+默认情况下，脚本会在 `gomobile bind` 完成后解包 AAR，并使用 NDK 的 `llvm-strip --strip-unneeded` 对 `jni/**/*.so` 执行 strip，然后重新打包 AAR。
+
+如需保留调试符号：
+
+```bash
+STRIP_SO=0 ./scripts/build-android.sh
+```
+
+如需指定 strip 工具：
+
+```bash
+STRIP_TOOL=/path/to/llvm-strip ./scripts/build-android.sh
 ```
 
 ## Android 接入

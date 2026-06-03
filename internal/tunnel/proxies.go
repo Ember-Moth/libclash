@@ -1,8 +1,11 @@
 package tunnel
 
 import (
+	"context"
+	"errors"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dlclark/regexp2"
 
@@ -162,6 +165,36 @@ func PatchSelector(selector, name string) bool {
 	closeConnByGroup(selector)
 
 	return true
+}
+
+func TestProxyDelay(name string, testURL string, timeoutMilliseconds int) (int, error) {
+	p := tunnel.Proxies()[name]
+	if p == nil {
+		return 0, errors.New("proxy not found")
+	}
+
+	if testURL == "" {
+		testURL = "https://www.gstatic.com/generate_204"
+	}
+	if timeoutMilliseconds <= 0 {
+		timeoutMilliseconds = 5000
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(timeoutMilliseconds))
+	defer cancel()
+
+	delay, err := p.URLTest(ctx, testURL, nil)
+	if ctx.Err() != nil {
+		return 0, ctx.Err()
+	}
+	if err != nil {
+		return 0, err
+	}
+	if delay == 0 {
+		return 0, errors.New("delay test failed")
+	}
+
+	return int(delay), nil
 }
 
 func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Proxy {

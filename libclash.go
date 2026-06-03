@@ -319,6 +319,11 @@ func QueryTrafficTotal() int64 {
 	return packTraffic(up, down)
 }
 
+// QueryConnectionCount returns the active connection count.
+func QueryConnectionCount() int32 {
+	return int32(coretunnel.QueryConnectionCount())
+}
+
 // QueryGroupNames returns JSON proxy group names.
 func QueryGroupNames(excludeNotSelectable bool) string {
 	return marshalJSON(coretunnel.QueryProxyGroupNames(excludeNotSelectable))
@@ -356,6 +361,17 @@ func HealthCheckAll() {
 // PatchSelector updates a selector group choice.
 func PatchSelector(selector string, name string) bool {
 	return coretunnel.PatchSelector(selector, name)
+}
+
+// TestProxyDelay runs URLTest for one proxy and returns the delay in milliseconds.
+func TestProxyDelay(name string, testURL string, timeoutMilliseconds int32) int32 {
+	delay, err := coretunnel.TestProxyDelay(name, testURL, int(timeoutMilliseconds))
+	if err != nil {
+		log.Warnln("Test proxy delay `%s`: %s", name, err.Error())
+		return -1
+	}
+
+	return int32(delay)
 }
 
 // QueryProviders returns provider list JSON.

@@ -1,6 +1,9 @@
-//go:build !android
+//go:build !(android && cmfa)
 
 package app
 
-func NotifyDnsChanged(dnsList string) {
+func updateSystemDNS(addr []string) {
+}
+
+func flushCacheWithDefaultResolver() {
 }

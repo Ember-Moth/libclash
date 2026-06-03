@@ -30,6 +30,19 @@ var processors = []processor{
 
 type processor func(cfg *config.RawConfig, profileDir string) error
 
+var (
+	externalController string
+	mixedPort          int
+)
+
+func SetExternalController(listenAt string) {
+	externalController = strings.TrimSpace(listenAt)
+}
+
+func SetMixedPort(port int) {
+	mixedPort = port
+}
+
 func patchOverride(cfg *config.RawConfig, _ string) error {
 	if err := json.NewDecoder(strings.NewReader(ReadOverride(OverrideSlotPersist))).Decode(cfg); err != nil {
 		log.Warnln("Apply persist override: %s", err.Error())
@@ -42,7 +55,7 @@ func patchOverride(cfg *config.RawConfig, _ string) error {
 }
 
 func patchExternalController(cfg *config.RawConfig, _ string) error {
-	cfg.ExternalController = ""
+	cfg.ExternalController = externalController
 	cfg.ExternalControllerTLS = ""
 
 	return nil
@@ -51,6 +64,9 @@ func patchExternalController(cfg *config.RawConfig, _ string) error {
 func patchGeneral(cfg *config.RawConfig, profileDir string) error {
 	cfg.Interface = ""
 	cfg.RoutingMark = 0
+	if mixedPort > 0 {
+		cfg.MixedPort = mixedPort
+	}
 	if cfg.ExternalController != "" || cfg.ExternalControllerTLS != "" {
 		cfg.ExternalUI = profileDir + "/ui"
 	}
