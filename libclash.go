@@ -133,6 +133,16 @@ func ForceGC() {
 	}()
 }
 
+// SetMemoryLimit sets Go runtime's soft memory limit and returns the previous value.
+func SetMemoryLimit(bytes int64) int64 {
+	return debug.SetMemoryLimit(bytes)
+}
+
+// SetGCPercent sets Go runtime's GC target percentage and returns the previous value.
+func SetGCPercent(percent int32) int32 {
+	return int32(debug.SetGCPercent(int(percent)))
+}
+
 // SetContentCallback installs the Android content:// opener.
 func SetContentCallback(callback ContentCallback) {
 	if callback == nil {

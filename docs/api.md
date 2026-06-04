@@ -109,6 +109,23 @@ void forceGC()
 
 异步请求 Go runtime 执行 GC。
 
+### setMemoryLimit
+
+```java
+long setMemoryLimit(long bytes)
+```
+
+设置 Go runtime 软内存上限，返回旧值。传入 `-1` 可恢复 Go 默认行为。
+
+### setGCPercent
+
+```java
+int setGCPercent(int percent)
+```
+
+设置 Go runtime GC 目标百分比，返回旧值。移动端内存敏感进程可使用较低值，例如
+`50`。
+
 ## Android 上下文 API
 
 ### setContentCallback

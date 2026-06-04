@@ -467,6 +467,20 @@ func libclash_force_gc() {
 	setLastError("")
 }
 
+//export libclash_set_memory_limit
+func libclash_set_memory_limit(bytes C.longlong) C.longlong {
+	previous := core.SetMemoryLimit(int64(bytes))
+	setLastError("")
+	return C.longlong(previous)
+}
+
+//export libclash_set_gc_percent
+func libclash_set_gc_percent(percent C.int) C.int {
+	previous := core.SetGCPercent(int32(percent))
+	setLastError("")
+	return C.int(previous)
+}
+
 //export libclash_update_dns
 func libclash_update_dns(dnsCSV *C.char) {
 	core.NotifyDnsChanged(goString(dnsCSV))
