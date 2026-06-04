@@ -324,6 +324,11 @@ func QueryConnectionCount() int32 {
 	return int32(coretunnel.QueryConnectionCount())
 }
 
+// CloseAllConnections closes all active tracked connections.
+func CloseAllConnections() {
+	coretunnel.CloseAllConnections()
+}
+
 // QueryGroupNames returns JSON proxy group names.
 func QueryGroupNames(excludeNotSelectable bool) string {
 	return marshalJSON(coretunnel.QueryProxyGroupNames(excludeNotSelectable))

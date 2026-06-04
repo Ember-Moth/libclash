@@ -190,7 +190,14 @@ func profileDirForPath(path string) (string, func(), error) {
 		return filepath.Dir(path), func() {}, nil
 	}
 
-	tempDir, err := os.MkdirTemp("", "libclash-profile-*")
+	tempRoot := tempRootForPath(path)
+	if tempRoot != "" {
+		if err := os.MkdirAll(tempRoot, 0755); err != nil {
+			return "", nil, err
+		}
+	}
+
+	tempDir, err := os.MkdirTemp(tempRoot, "libclash-profile-*")
 	if err != nil {
 		return "", nil, err
 	}
@@ -201,6 +208,18 @@ func profileDirForPath(path string) (string, func(), error) {
 	}
 
 	return tempDir, func() { os.RemoveAll(tempDir) }, nil
+}
+
+func tempRootForPath(path string) string {
+	if homeDir := currentHomeDir(); homeDir != "" {
+		return filepath.Join(homeDir, "tmp")
+	}
+
+	if dir := filepath.Dir(path); dir != "." && dir != "" {
+		return filepath.Join(dir, ".libclash-tmp")
+	}
+
+	return ""
 }
 
 func validateConfigPath(path string) error {
@@ -389,6 +408,12 @@ func libclash_query_traffic_total() C.longlong {
 //export libclash_query_connection_count
 func libclash_query_connection_count() C.int {
 	return C.int(core.QueryConnectionCount())
+}
+
+//export libclash_close_all_connections
+func libclash_close_all_connections() {
+	core.CloseAllConnections()
+	setLastError("")
 }
 
 //export libclash_query_group_names
