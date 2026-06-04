@@ -416,6 +416,15 @@ func libclash_close_all_connections() {
 	setLastError("")
 }
 
+//export libclash_set_mode
+func libclash_set_mode(mode *C.char) C.int {
+	if core.SetMode(goString(mode)) {
+		return C.int(setLastError(""))
+	}
+
+	return C.int(fail(errors.New("invalid mode")))
+}
+
 //export libclash_query_group_names
 func libclash_query_group_names(excludeNotSelectable C.int) *C.char {
 	return newCString(core.QueryGroupNames(excludeNotSelectable != 0))

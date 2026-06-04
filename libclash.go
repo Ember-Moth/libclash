@@ -307,6 +307,11 @@ func QueryTunnelState() string {
 	}{coretunnel.QueryMode()})
 }
 
+// SetMode changes the running tunnel outbound mode.
+func SetMode(mode string) bool {
+	return coretunnel.SetMode(strings.ToLower(strings.TrimSpace(mode)))
+}
+
 // QueryTrafficNow returns packed upload/download traffic.
 func QueryTrafficNow() int64 {
 	up, down := coretunnel.Now()
