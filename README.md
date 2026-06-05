@@ -95,7 +95,7 @@ Avalonia Android 项目使用这个产物：
 ```bash
 cd /root/mihomo/libclash
 ANDROID_NDK_HOME=/opt/android-sdk/ndk/29.0.14206865 \
-INSTALL_DIR=/root/mihomo/Mihomo/Mihomo.Android/NativeLibraries \
+INSTALL_DIR=/root/mihomo/Aureline/Aureline.Android/NativeLibraries \
 ./scripts/build-cshared-android.sh
 ```
 
