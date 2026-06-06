@@ -22,6 +22,7 @@ var processors = []processor{
 	patchGeneral,
 	patchProfile,
 	patchDns,
+	patchSniffer,
 	patchTun,
 	patchListeners,
 	patchProviders,
@@ -98,6 +99,49 @@ func patchDns(cfg *config.RawConfig, _ string) error {
 	}
 
 	return nil
+}
+
+func patchSniffer(cfg *config.RawConfig, _ string) error {
+	cfg.Sniffer.Enable = true
+	cfg.Sniffer.OverrideDest = true
+	cfg.Sniffer.ForceDnsMapping = true
+	cfg.Sniffer.ParsePureIp = true
+
+	if cfg.Sniffer.Sniff == nil {
+		cfg.Sniffer.Sniff = make(map[string]config.RawSniffingConfig, 3)
+	}
+
+	mergeSnifferConfig(cfg.Sniffer.Sniff, "TLS", []string{"443", "8443"})
+	mergeSnifferConfig(cfg.Sniffer.Sniff, "HTTP", []string{"80", "8080-8880"})
+	mergeSnifferConfig(cfg.Sniffer.Sniff, "QUIC", []string{"443", "8443"})
+	return nil
+}
+
+func mergeSnifferConfig(
+	sniff map[string]config.RawSniffingConfig,
+	name string,
+	defaultPorts []string,
+) {
+	key := name
+	for existing := range sniff {
+		if strings.EqualFold(existing, name) {
+			key = existing
+			break
+		}
+	}
+
+	current := sniff[key]
+	if len(current.Ports) == 0 {
+		current.Ports = defaultPorts
+	}
+	if current.OverrideDest == nil {
+		current.OverrideDest = boolPtr(true)
+	}
+	sniff[key] = current
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
 
 func patchTun(cfg *config.RawConfig, _ string) error {
