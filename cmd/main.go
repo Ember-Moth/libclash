@@ -435,6 +435,11 @@ func libclash_query_group(name *C.char, sortMode *C.char) *C.char {
 	return newCString(core.QueryGroup(goString(name), goString(sortMode)))
 }
 
+//export libclash_query_groups
+func libclash_query_groups(sortMode *C.char) *C.char {
+	return newCString(core.QueryGroups(goString(sortMode)))
+}
+
 //export libclash_patch_selector
 func libclash_patch_selector(selector *C.char, name *C.char) C.int {
 	if core.PatchSelector(goString(selector), goString(name)) {

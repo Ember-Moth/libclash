@@ -64,6 +64,21 @@ type remoteTun struct {
 	limit  *semaphore.Weighted
 }
 
+type proxyGroupWire struct {
+	Name    string       `json:"Name"`
+	Type    string       `json:"Type"`
+	Now     string       `json:"Now"`
+	TestURL string       `json:"TestUrl"`
+	Proxies []*proxyWire `json:"Proxies"`
+}
+
+type proxyWire struct {
+	Name  string `json:"Name"`
+	Type  string `json:"Type"`
+	Now   string `json:"Now"`
+	Delay *int   `json:"Delay"`
+}
+
 func errorString(err error) string {
 	if err == nil {
 		return ""
@@ -366,6 +381,68 @@ func QueryGroup(name string, sortMode string) string {
 	}
 
 	return marshalJSON(response)
+}
+
+// QueryGroups returns all visible proxy groups in the UI wire shape.
+func QueryGroups(sortMode string) string {
+	mode := coretunnel.Default
+
+	switch sortMode {
+	case "Title":
+		mode = coretunnel.Title
+	case "Delay":
+		mode = coretunnel.Delay
+	}
+
+	names := coretunnel.QueryProxyGroupNames(false)
+	groups := make([]*proxyGroupWire, 0, len(names))
+	subtitlePattern := app.SubtitlePattern()
+
+	for _, name := range names {
+		group := coretunnel.QueryProxyGroup(name, mode, subtitlePattern)
+		if group == nil || len(group.Proxies) == 0 {
+			continue
+		}
+
+		proxies := make([]*proxyWire, 0, len(group.Proxies))
+		for _, proxy := range group.Proxies {
+			if proxy == nil || strings.TrimSpace(proxy.Name) == "" {
+				continue
+			}
+
+			proxyType := proxy.Type
+			if proxyType == "" {
+				proxyType = proxy.Subtitle
+			}
+
+			var delay *int
+			if proxy.Delay > 0 && proxy.Delay < 65535 {
+				value := proxy.Delay
+				delay = &value
+			}
+
+			proxies = append(proxies, &proxyWire{
+				Name:  proxy.Name,
+				Type:  proxyType,
+				Now:   "",
+				Delay: delay,
+			})
+		}
+
+		if len(proxies) == 0 {
+			continue
+		}
+
+		groups = append(groups, &proxyGroupWire{
+			Name:    name,
+			Type:    group.Type,
+			Now:     group.Now,
+			TestURL: "",
+			Proxies: proxies,
+		})
+	}
+
+	return marshalJSON(groups)
 }
 
 // HealthCheck runs a health check for a group.
