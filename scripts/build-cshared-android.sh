@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${OUT_DIR:-"$ROOT_DIR/dist/cshared/android"}"
 API_LEVEL="${ANDROID_API_LEVEL:-21}"
-TAGS="${GO_TAGS:-foss,with_gvisor,cmfa}"
+TAGS="${GO_TAGS:-foss,cmfa,with_low_memory,no_tailscale,no_fake_tcp}"
 NDK_DIR="${ANDROID_NDK_HOME:-${NDK_HOME:-}}"
 HOST_TAG="${ANDROID_NDK_HOST_TAG:-linux-x86_64}"
 STRIP_SO="${STRIP_SO:-1}"

@@ -78,9 +78,17 @@ cd /root/mihomo/libclash
 - `JAVA_PKG`：生成 Java 包名前缀，默认 `com.github.embermoth`
 - `AAR_NAME`：输出 AAR 文件名，默认 `libclash.aar`
 - `GOMOBILE_TARGET`：gomobile target，默认 `android/arm,android/arm64,android/amd64`
-- `GO_TAGS`：Go build tags，默认 `foss,with_gvisor,cmfa`
+- `GO_TAGS`：Go build tags，默认 `foss,cmfa,with_low_memory,no_tailscale,no_fake_tcp`
 - `STRIP_SO`：是否 strip AAR 内的 `.so`，默认 `1`；调试符号构建可设为 `0`
 - `STRIP_TOOL`：自定义 strip 工具路径，默认使用 NDK toolchain 的 `llvm-strip`
+
+默认构建偏向移动端低内存场景：启用 `with_low_memory`，禁用 Tailscale
+outbound 和 fake-tcp，并且不包含 `with_gvisor`。这意味着默认产物只保证
+`system` TUN 栈；如需 gVisor/mixed 栈，可以显式传入：
+
+```bash
+GO_TAGS=foss,with_gvisor,cmfa ./scripts/build-cshared-android.sh
+```
 
 这台环境可直接使用：
 

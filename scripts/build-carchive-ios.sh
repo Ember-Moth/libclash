@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${OUT_DIR:-"$ROOT_DIR/dist/cshared/ios"}"
 IOS_MIN_VERSION="${IOS_MIN_VERSION:-13.0}"
-TAGS="${GO_TAGS:-foss,with_gvisor}"
+TAGS="${GO_TAGS:-foss,with_low_memory,no_tailscale,no_fake_tcp}"
 LDFLAGS="${GO_LDFLAGS:--s -w}"
 BUILD_SIMULATOR_X64="${BUILD_SIMULATOR_X64:-1}"
 
