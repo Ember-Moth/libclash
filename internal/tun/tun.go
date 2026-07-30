@@ -14,8 +14,18 @@ import (
 	"github.com/metacubex/mihomo/tunnel"
 )
 
-func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
-	log.Debugln("TUN: fd = %d, stack = %s, gateway = %s, portal = %s, dns = %s", fd, stack, gateway, portal, dns)
+// DefaultMTU is the value the Android client has always used (TUN_MTU in
+// TunService.kt). It is only a fallback: a caller should pass the MTU its
+// platform actually configured on the interface, because sing-tun sizes its
+// per-packet buffers from this value.
+const DefaultMTU = 9000
+
+func Start(fd int, mtu int, stack, gateway, portal, dns string) (io.Closer, error) {
+	if mtu <= 0 {
+		mtu = DefaultMTU
+	}
+
+	log.Debugln("TUN: fd = %d, mtu = %d, stack = %s, gateway = %s, portal = %s, dns = %s", fd, mtu, stack, gateway, portal, dns)
 
 	tunStack, ok := C.StackTypeMapping[strings.ToLower(stack)]
 	if !ok {
@@ -56,11 +66,11 @@ func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
 		Device:              sing_tun.InterfaceName,
 		Stack:               tunStack,
 		DNSHijack:           dnsHijack,
-		AutoRoute:           false, // had set route in TunService.kt
-		AutoDetectInterface: false, // implements by VpnService::protect
+		AutoRoute:           false, // the host owns the routing table
+		AutoDetectInterface: false, // the host protects sockets itself
 		Inet4Address:        prefix4,
 		Inet6Address:        prefix6,
-		MTU:                 9000, // private const val TUN_MTU = 9000 in TunService.kt
+		MTU:                 uint32(mtu),
 		FileDescriptor:      fd,
 	}
 

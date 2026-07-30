@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sync/semaphore"
 
@@ -86,12 +87,24 @@ func errorString(err error) string {
 	return err.Error()
 }
 
+// marshalJSON encodes obj for one of the query APIs. A failure here would mean
+// an unmarshalable wire type, which is a programming error rather than
+// something a caller can act on, but this runs at an FFI boundary where a
+// panic would take the whole host process down, so it is logged and reported
+// as an empty payload instead.
 func marshalJSON(obj any) string {
-	bytes, err := json.Marshal(obj)
+	encoded, err := json.Marshal(obj)
 	if err != nil {
-		panic(err.Error())
+		log.Errorln("[APP] marshal JSON failed: %s", err.Error())
+		return ""
 	}
-	return string(bytes)
+	if len(encoded) == 0 {
+		return ""
+	}
+	// json.Marshal hands back a buffer that nothing else references and that
+	// is never written to again, so it can back the string directly rather
+	// than being copied into a new one.
+	return unsafe.String(unsafe.SliceData(encoded), len(encoded))
 }
 
 func downScaleTraffic(value uint64) uint64 {
@@ -280,8 +293,11 @@ func (t *remoteTun) close() {
 	app.ApplyTunContext(nil, nil)
 }
 
-// StartTun attaches an Android VPN fd to mihomo and returns an error string.
-func StartTun(fd int32, stack string, gateway string, portal string, dns string, callback TunCallback) string {
+// StartTun attaches a platform VPN fd to mihomo and returns an error string.
+// Pass the MTU the platform configured on the interface; a non-positive value
+// falls back to tun.DefaultMTU. sing-tun sizes its per-packet buffers from the
+// MTU, so an oversized value costs memory on every buffered packet.
+func StartTun(fd int32, mtu int32, stack string, gateway string, portal string, dns string, callback TunCallback) string {
 	if callback == nil {
 		return "tun callback is nil"
 	}
@@ -302,7 +318,7 @@ func StartTun(fd int32, stack string, gateway string, portal string, dns string,
 
 	app.ApplyTunContext(remote.markSocket, remote.querySocketUid)
 
-	closer, err := tun.Start(int(fd), stack, gateway, portal, dns)
+	closer, err := tun.Start(int(fd), int(mtu), stack, gateway, portal, dns)
 	if err != nil {
 		remote.close()
 		return err.Error()

@@ -362,12 +362,14 @@ func libclash_stop_listener() C.int {
 //export libclash_start_tun
 func libclash_start_tun(
 	fd C.int,
+	mtu C.int,
 	stack *C.char,
 	addressCSV *C.char,
 	dnsCSV *C.char,
 ) C.int {
 	message := core.StartTun(
 		int32(fd),
+		int32(mtu),
 		goString(stack),
 		goString(addressCSV),
 		"",
