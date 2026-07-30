@@ -1,0 +1,258 @@
+name: Build native libraries
+
+on:
+  workflow_dispatch:
+    inputs:
+      ios:
+        description: Build the iOS c-archive and XCFramework
+        type: boolean
+        default: true
+      android_aar:
+        description: Build the Android AAR through gomobile
+        type: boolean
+        default: true
+      android_cshared:
+        description: Build the Android c-shared libclash.so
+        type: boolean
+        default: true
+      ohos_cshared:
+        description: Build the OpenHarmony c-shared libclash.so (needs OHOS_SDK_URL)
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - "libclash.go"
+      - "go.mod"
+      - "go.sum"
+      - "scripts/**"
+      - ".github/workflows/build.yml"
+  pull_request:
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - "libclash.go"
+      - "go.mod"
+      - "go.sum"
+      - "scripts/**"
+      - ".github/workflows/build.yml"
+
+# A newer push supersedes an in-flight build of the same ref.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    name: iOS c-archive
+    # Manual runs honour the checkboxes; push and pull_request build everything.
+    if: github.event_name != 'workflow_dispatch' || inputs.ios
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Show toolchains
+        run: |
+          go version
+          xcodebuild -version
+
+      - name: Build
+        run: ./scripts/build-carchive-ios.sh
+
+      - name: Package
+        run: tar -czf libclash-ios.tar.gz -C dist/cshared ios
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: libclash-ios
+          path: libclash-ios.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  android-aar:
+    name: Android AAR
+    if: github.event_name != 'workflow_dispatch' || inputs.android_aar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      # gomobile bind generates Java sources and needs a JDK to compile them.
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@${GOMOBILE_VERSION:-latest}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+        env:
+          GOMOBILE_VERSION: ${{ vars.GOMOBILE_VERSION }}
+
+      - name: Show toolchains
+        run: |
+          go version
+          gomobile version
+          java -version
+          echo "NDK: ${ANDROID_NDK_HOME:-${ANDROID_NDK_LATEST_HOME:?the runner image did not provide an NDK}}"
+
+      - name: Build
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_NDK_LATEST_HOME}"
+          ./scripts/build-android.sh
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: libclash-android-aar
+          path: dist/android/libclash.aar
+          if-no-files-found: error
+          retention-days: 14
+
+  android-cshared:
+    name: Android c-shared
+    if: github.event_name != 'workflow_dispatch' || inputs.android_cshared
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Show toolchains
+        run: |
+          go version
+          echo "NDK: ${ANDROID_NDK_HOME:-${ANDROID_NDK_LATEST_HOME:?the runner image did not provide an NDK}}"
+
+      - name: Build
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_NDK_LATEST_HOME}"
+          ./scripts/build-cshared-android.sh
+
+      - name: Package
+        run: tar -czf libclash-android-cshared.tar.gz -C dist/cshared android
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: libclash-android-cshared
+          path: libclash-android-cshared.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  ohos-cshared:
+    name: OpenHarmony c-shared
+    if: github.event_name != 'workflow_dispatch' || inputs.ohos_cshared
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The runner image has no OpenHarmony SDK, so the archive has to be
+      # supplied. Set the OHOS_SDK_URL repository variable to a command-line
+      # tools archive that unpacks to a directory containing sdk/.
+      - name: Resolve SDK source
+        id: sdk
+        run: |
+          if [[ -z "${OHOS_SDK_URL}" ]]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          OHOS_SDK_URL: ${{ vars.OHOS_SDK_URL }}
+
+      - name: Explain skip
+        if: steps.sdk.outputs.available != 'true'
+        run: |
+          echo "::notice title=OpenHarmony build skipped::Set the OHOS_SDK_URL repository variable to an OpenHarmony command-line tools archive to enable this job."
+
+      - name: Set up Go
+        if: steps.sdk.outputs.available == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Cache SDK
+        if: steps.sdk.outputs.available == 'true'
+        id: sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: ohos-sdk
+          key: ohos-sdk-${{ hashFiles('.github/workflows/build.yml') }}-${{ vars.OHOS_SDK_URL }}
+
+      - name: Download SDK
+        if: steps.sdk.outputs.available == 'true' && steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ohos-sdk
+          curl -fsSL "$OHOS_SDK_URL" -o ohos-sdk.zip
+          unzip -q ohos-sdk.zip -d ohos-sdk
+        env:
+          OHOS_SDK_URL: ${{ vars.OHOS_SDK_URL }}
+
+      # The archive layout differs between releases, so locate the directory
+      # holding native/llvm rather than assuming a fixed path.
+      - name: Locate SDK root
+        if: steps.sdk.outputs.available == 'true'
+        run: |
+          root="$(dirname "$(dirname "$(find ohos-sdk -type d -path '*/native/llvm' -print -quit)")")"
+          if [[ -z "$root" || ! -x "$root/native/llvm/bin/clang" ]]; then
+            echo "could not find native/llvm/bin/clang under ohos-sdk" >&2
+            find ohos-sdk -maxdepth 4 -type d | head -50 >&2
+            exit 1
+          fi
+          echo "OHOS_SDK_HOME=$(cd "$root" && pwd)" >> "$GITHUB_ENV"
+
+      - name: Show toolchains
+        if: steps.sdk.outputs.available == 'true'
+        run: |
+          go version
+          "$OHOS_SDK_HOME/native/llvm/bin/clang" --version
+
+      - name: Build
+        if: steps.sdk.outputs.available == 'true'
+        run: ./scripts/build-cshared-ohos.sh
+
+      - name: Package
+        if: steps.sdk.outputs.available == 'true'
+        run: tar -czf libclash-ohos-cshared.tar.gz -C dist/cshared ohos
+
+      - name: Upload
+        if: steps.sdk.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: libclash-ohos-cshared
+          path: libclash-ohos-cshared.tar.gz
+          if-no-files-found: error
+          retention-days: 14
