@@ -106,9 +106,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # gomobile bind shells out to gobind, which is a separate binary that
+      # installing gomobile alone does not provide. Both come from the same
+      # module version so they cannot disagree.
       - name: Install gomobile
         run: |
-          go install golang.org/x/mobile/cmd/gomobile@${GOMOBILE_VERSION:-latest}
+          version="${GOMOBILE_VERSION:-latest}"
+          go install "golang.org/x/mobile/cmd/gomobile@$version"
+          go install "golang.org/x/mobile/cmd/gobind@$version"
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
         env:
           GOMOBILE_VERSION: ${{ vars.GOMOBILE_VERSION }}
@@ -117,6 +122,7 @@ jobs:
         run: |
           go version
           gomobile version
+          command -v gobind
           java -version
           echo "NDK: ${ANDROID_NDK_HOME:-${ANDROID_NDK_LATEST_HOME:?the runner image did not provide an NDK}}"
 
